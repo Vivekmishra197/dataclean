@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV to PPT Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.3.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
+</head>
+<body>
+  <h1>CSV to PPT Dashboard Generator</h1>
+  <input type="file" id="csvFileInput" accept=".csv" />
+  <button id="generatePpt">Generate PPT</button>
+  <script>
+    document.getElementById("generatePpt").addEventListener("click", function () {
+      const csvFileInput = document.getElementById("csvFileInput");
+      if (!csvFileInput.files.length) {
+        alert("Please upload a CSV file first.");
+        return;
+      }
+
+      const file = csvFileInput.files[0];
+      Papa.parse(file, {
+        header: true,
+        complete: function (results) {
+          const data = results.data;
+
+          // Check if data is valid
+          if (!data.length) {
+            alert("CSV file is empty or invalid.");
+            return;
+          }
+
+          generatePptDashboard(data);
+        },
+        error: function () {
+          alert("Failed to parse the CSV file.");
+        },
+      });
+    });
+
+    function generatePptDashboard(data) {
+      const ppt = new PptxGenJS();
+
+      // Add a slide for the title
+      const titleSlide = ppt.addSlide();
+      titleSlide.addText("CSV Data Dashboard"
