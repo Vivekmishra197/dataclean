@@ -3,16 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CSV to PPT Dashboard</title>
+  <title>CSV Data Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.3.1/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .dashboard-section {
+      margin-bottom: 40px;
+    }
+    #charts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .chart-container {
+      width: 400px;
+      height: 300px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    table, th, td {
+      border: 1px solid black;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+  </style>
 </head>
 <body>
-  <h1>CSV to PPT Dashboard Generator</h1>
-  <input type="file" id="csvFileInput" accept=".csv" />
-  <button id="generatePpt">Generate PPT</button>
+  <h1>CSV Data Dashboard</h1>
+  <div class="dashboard-section">
+    <input type="file" id="csvFileInput" accept=".csv" />
+    <button id="analyzeBtn">Generate Dashboard</button>
+  </div>
+
+  <div id="output">
+    <!-- Summary Section -->
+    <div id="summarySection" class="dashboard-section">
+      <h2>Summary</h2>
+      <p id="summary"></p>
+    </div>
+
+    <!-- Charts Section -->
+    <div id="charts" class="dashboard-section">
+      <h2>Charts</h2>
+    </div>
+
+    <!-- Table Preview Section -->
+    <div id="tablePreview" class="dashboard-section">
+      <h2>Data Preview</h2>
+      <table id="previewTable"></table>
+    </div>
+  </div>
+
   <script>
-    document.getElementById("generatePpt").addEventListener("click", function () {
+    document.getElementById("analyzeBtn").addEventListener("click", function () {
       const csvFileInput = document.getElementById("csvFileInput");
       if (!csvFileInput.files.length) {
         alert("Please upload a CSV file first.");
@@ -22,16 +74,13 @@
       const file = csvFileInput.files[0];
       Papa.parse(file, {
         header: true,
+        skipEmptyLines: true,
         complete: function (results) {
-          const data = results.data;
-
-          // Check if data is valid
-          if (!data.length) {
+          if (results.data.length === 0) {
             alert("CSV file is empty or invalid.");
             return;
           }
-
-          generatePptDashboard(data);
+          generateDashboard(results.data);
         },
         error: function () {
           alert("Failed to parse the CSV file.");
@@ -39,9 +88,85 @@
       });
     });
 
-    function generatePptDashboard(data) {
-      const ppt = new PptxGenJS();
+    function generateDashboard(data) {
+      const summary = document.getElementById("summary");
+      const previewTable = document.getElementById("previewTable");
+      const chartsContainer = document.getElementById("charts");
 
-      // Add a slide for the title
-      const titleSlide = ppt.addSlide();
-      titleSlide.addText("CSV Data Dashboard"
+      // Clear previous results
+      summary.innerHTML = "";
+      previewTable.innerHTML = "";
+      chartsContainer.innerHTML = "";
+
+      const numRows = data.length;
+      const columns = Object.keys(data[0]);
+      summary.innerHTML = `
+        <strong>Number of Rows:</strong> ${numRows}<br>
+        <strong>Columns:</strong> ${columns.join(", ")}
+      `;
+
+      // Display a preview of the data
+      let tableHTML = "<thead><tr>";
+      columns.forEach((col) => (tableHTML += `<th>${col}</th>`));
+      tableHTML += "</tr></thead><tbody>";
+
+      const previewRows = data.slice(0, 10);
+      previewRows.forEach((row) => {
+        tableHTML += "<tr>";
+        columns.forEach((col) => (tableHTML += `<td>${row[col] || ""}</td>`));
+        tableHTML += "</tr>";
+      });
+
+      tableHTML += "</tbody>";
+      previewTable.innerHTML = tableHTML;
+
+      // Generate charts for numeric columns
+      const numericColumns = columns.filter((col) =>
+        data.every((row) => !isNaN(parseFloat(row[col])) || row[col] === "")
+      );
+
+      numericColumns.forEach((col) => {
+        const values = data
+          .map((row) => parseFloat(row[col]))
+          .filter((val) => !isNaN(val));
+
+        if (values.length) {
+          createChart(chartsContainer, col, values);
+        }
+      });
+    }
+
+    function createChart(container, label, data) {
+      const chartContainer = document.createElement("div");
+      chartContainer.className = "chart-container";
+      const canvas = document.createElement("canvas");
+      chartContainer.appendChild(canvas);
+      container.appendChild(chartContainer);
+
+      new Chart(canvas, {
+        type: "bar", // Change to 'line', 'pie', etc., for other chart types
+        data: {
+          labels: data.map((_, index) => `Row ${index + 1}`),
+          datasets: [
+            {
+              label: label,
+              data: data,
+              backgroundColor: "rgba(75, 192, 192, 0.2)",
+              borderColor: "rgba(75, 192, 192, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+    }
+  </script>
+</body>
+</html>
